@@ -240,35 +240,71 @@ This is equivalent to::
 Callable
 --------
 
-Frameworks expecting callback functions of specific signatures might be
-type hinted using ``Callable[[Arg1Type, Arg2Type], ReturnType]``.
+Frameworks expecting callback functions of specific signatures are
+type hinted using ``Callable[ArgumentList, ReturnType]``.
+``ArgumentList`` is a list of types or ``Arg`` objects. A type in an
+argument list indicates a positional argument of that type with an
+unspecified name. ``Arg`` objects are used to specify arguments
+that must have a specific name or kind.
+
+
 Examples::
 
-  from typing import Callable
+  from typing import Callable, StarArg, KwArg
 
   def feeder(get_next_item: Callable[[], str]) -> None:
-      # Body
+      ... # get_next_item has no arguments and returns a string
 
   def async_query(on_success: Callable[[int], None],
                   on_error: Callable[[int, Exception], None]) -> None:
-      # Body
+      ...
+      # on_success takes in a single int
+      # on_error takes in an int and an Exception
 
-It is possible to declare the return type of a callable without
-specifying the call signature by substituting a literal ellipsis
-(three dots) for the list of arguments::
+  def worker(logger: Callable[[str, OptArg("log_level", int)], None]) -> None:
+      ...
+      # logger is a function that takes a string (the arg could be called
+      # anything) and an optional int which must be called "log_level"
+
+  def print_report(
+      self,
+      formatter: Callable[[str, StarArg(str), KwArg(str)], str]) -> None:
+      ...
+      # formatter is a function that takes in a str and also has a *args and a
+      # **kwargs in its argument list (it takes in a str and any number of other
+      # positional and keyword arguments)
+
+The available ``Arg`` objects are:
+
+* ``Arg(name: Optional[str]=None, type: Type=Any, kw_only: bool=False)``
+  Produces a required argument with the given name and type.  If
+  ``kw_only`` is true, this argument is keyword-only, and no
+  positional arguments may follow. Otherwise the argument is
+  positional. In an argument list, ``Arg(type=int)`` is equivalent to
+  writing plain ``int``.
+
+* ``OptArg(name: Optional[str], type: Type=Any, kw_only: bool=False)``
+  Produces an optional argument with the given name, type, and
+  keyword-only nature.
+
+* ``StarArg(type: Type=Any)`` Produces a star argument (aka variadic
+  argument) to the function.  The `type` is the type of all elements
+  of the resulting tuple.
+
+* ``KwArg(type: Type=Any)`` Produces a variadic keyword argument (aka
+  double-star argument) to the function. The `type` is the type of all
+  values of the resulting argument dictionary.
+
+To declare the return type of a callable without specifying the call
+signature, substitute a literal ellipsis (three dots) for the list of
+arguments::
 
   def partial(func: Callable[..., str], *args) -> Callable[..., str]:
-      # Body
+      ... # func is any function that produces a string
 
 Note that there are no square brackets around the ellipsis.  The
 arguments of the callback are completely unconstrained in this case
 (and keyword arguments are acceptable).
-
-Since using callbacks with keyword arguments is not perceived as a
-common use case, there is currently no support for specifying keyword
-arguments with ``Callable``.  Similarly, there is no support for
-specifying callback signatures with a variable number of argument of a
-specific type.
 
 Because ``typing.Callable`` does double-duty as a replacement for
 ``collections.abc.Callable``, ``isinstance(x, typing.Callable)`` is
